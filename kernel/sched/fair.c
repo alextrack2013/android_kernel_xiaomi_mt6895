@@ -10903,9 +10903,8 @@ static bool _nohz_idle_balance(struct rq *this_rq, unsigned int flags,
 	if (likely(update_next_balance))
 		nohz.next_balance = next_balance;
 
-	if (flags & NOHZ_STATS_KICK)
-		WRITE_ONCE(nohz.next_blocked,
-			   now + msecs_to_jiffies(LOAD_AVG_PERIOD));
+	WRITE_ONCE(nohz.next_blocked,
+		now + msecs_to_jiffies(LOAD_AVG_PERIOD));
 
 	/* The full idle balance loop has been done */
 	ret = true;
