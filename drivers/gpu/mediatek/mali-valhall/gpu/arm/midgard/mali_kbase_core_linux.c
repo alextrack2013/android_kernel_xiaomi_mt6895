@@ -251,10 +251,6 @@ bool mali_kbase_supports_cap(unsigned long api_version, mali_kbase_cap cap)
 struct task_struct *kbase_create_realtime_thread(struct kbase_device *kbdev,
 	int (*threadfn)(void *data), void *data, const char namefmt[])
 {
-	unsigned int i;
-
-	cpumask_t mask = { CPU_BITS_NONE };
-
 	static const struct sched_param param = {
 		.sched_priority = KBASE_RT_THREAD_PRIO,
 	};
@@ -262,11 +258,6 @@ struct task_struct *kbase_create_realtime_thread(struct kbase_device *kbdev,
 	struct task_struct *ret = kthread_create(kthread_worker_fn, data, namefmt);
 
 	if (!IS_ERR(ret)) {
-		for (i = KBASE_RT_THREAD_CPUMASK_MIN; i <= KBASE_RT_THREAD_CPUMASK_MAX ; i++)
-			cpumask_set_cpu(i, &mask);
-
-		kthread_bind_mask(ret, &mask);
-
 		wake_up_process(ret);
 
 		if (sched_setscheduler(ret, SCHED_FIFO, &param))
