@@ -4984,11 +4984,11 @@ int kbase_device_debugfs_init(struct kbase_device *kbdev)
 	kbase_ktrace_debugfs_init(kbdev);
 
 #ifdef CONFIG_MALI_DEVFREQ
-#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
-#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && \
+	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR) && \
+	!IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
 	if (kbdev->devfreq)
 		kbase_ipa_debugfs_init(kbdev);
-#endif
 #endif /* CONFIG_DEVFREQ_THERMAL */
 #endif /* CONFIG_MALI_DEVFREQ */
 

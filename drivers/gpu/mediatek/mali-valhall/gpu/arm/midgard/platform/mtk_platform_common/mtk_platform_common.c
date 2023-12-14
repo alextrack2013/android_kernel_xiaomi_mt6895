@@ -92,7 +92,8 @@ int mtk_common_gpufreq_commit(int opp_idx)
 	int ret = -1;
 
 	mutex_lock(&mfg_pm_lock);
-	if (opp_idx >= 0 && mtk_common_pm_is_mfg_active()) {
+	if (opp_idx >= 0 && opp_idx < gpufreq_get_opp_num(TARGET_DEFAULT)) {
+		if (mtk_common_pm_is_mfg_active()) {
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 		ret = mtk_common_gpufreq_bringup() ?
 			-1 : gpufreq_commit(TARGET_DEFAULT, opp_idx);
@@ -100,6 +101,32 @@ int mtk_common_gpufreq_commit(int opp_idx)
 		ret = mtk_common_gpufreq_bringup() ?
 			-1 : mt_gpufreq_target(opp_idx, KIR_POLICY);
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
+		}
+#if IS_ENABLED(CONFIG_MALI_DEVFREQ) && \
+	!IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
+	/* need power on GPU to adujust freq then power off */
+		else {
+			ret = gpufreq_power_control(POWER_ON);
+			if (ret < 0) {
+				pr_info("@%s: fail to power on\n", __func__);
+				mutex_unlock(&mfg_pm_lock);
+				return ret;
+			}
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+			ret = mtk_common_gpufreq_bringup() ?
+					-1 : gpufreq_commit(TARGET_DEFAULT, opp_idx);
+#else
+			ret = mtk_common_gpufreq_bringup() ?
+					-1 : mt_gpufreq_target(opp_idx, KIR_POLICY);
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
+			ret = gpufreq_power_control(POWER_OFF);
+			if (ret < 0) {
+				pr_info("@%s: fail to power off\n", __func__);
+				mutex_unlock(&mfg_pm_lock);
+				return -EINVAL;
+			}
+		}
+#endif
 	}
 	mutex_unlock(&mfg_pm_lock);
 
@@ -255,6 +282,7 @@ int mtk_common_device_init(struct kbase_device *kbdev)
 
 	mtk_notify_gpu_freq_change_fp = MTKGPUFreq_change_notify;
 
+#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
 #if IS_ENABLED(CONFIG_MALI_MIDGARD_DVFS) && IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY)
 #if IS_ENABLED(CONFIG_MALI_MTK_DVFS_LOADING_MODE)
 	ged_dvfs_cal_gpu_utilization_ex_fp = mtk_common_cal_gpu_utilization_ex;
@@ -263,6 +291,7 @@ int mtk_common_device_init(struct kbase_device *kbdev)
 #endif
 	ged_dvfs_gpu_freq_commit_fp = mtk_common_ged_dvfs_commit;
 	ged_dvfs_set_gpu_core_mask_fp = mtk_set_core_mask;
+#endif
 #endif
 #if IS_ENABLED(CONFIG_MALI_MTK_MEM_TRACK)
 	mtk_get_gpu_memory_usage_fp = mtk_common_gpu_memory_usage;

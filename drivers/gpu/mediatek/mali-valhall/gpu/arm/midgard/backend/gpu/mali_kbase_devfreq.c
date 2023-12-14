@@ -35,6 +35,9 @@
 #if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 #include <platform/mtk_platform_common/mtk_gpu_devfreq_governor.h>
 #endif
+#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#include <platform/mtk_platform_common/mtk_platform_devfreq.h>
+#endif
 #if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
 #include <platform/mtk_platform_common/mtk_gpu_devfreq_thermal.h>
 #endif
@@ -644,7 +647,8 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 {
 	struct devfreq_dev_profile *dp;
 	int err;
-#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
+#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR) && \
+	!IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
 	unsigned int i;
 
 	if (kbdev->nr_clocks == 0) {
@@ -689,6 +693,10 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 #if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 	mtk_common_devfreq_update_profile(dp);
 #endif
+#if	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+	mtk_mali_devfreq_update_profile(dp);
+	mtk_devfreq_update_voltage();
+#endif
 
 	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp,
 #if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
@@ -728,8 +736,9 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 		goto opp_notifier_failed;
 	}
 
-#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
-#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && \
+	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR) && \
+	!IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
 	err = kbase_ipa_init(kbdev);
 	if (err) {
 		dev_err(kbdev->dev, "IPA initialization failed\n");
@@ -737,6 +746,8 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && \
+	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 	kbdev->devfreq_cooling = of_devfreq_cooling_register_power(
 			kbdev->dev->of_node,
 			kbdev->devfreq,
@@ -756,12 +767,11 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 
 	return 0;
 
-#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && \
+	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 cooling_reg_failed:
 	kbase_ipa_term(kbdev);
-#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
 ipa_init_failed:
-#endif
 	devfreq_unregister_opp_notifier(kbdev->dev, kbdev->devfreq);
 #endif /* CONFIG_DEVFREQ_THERMAL */
 
@@ -784,7 +794,8 @@ void kbase_devfreq_term(struct kbase_device *kbdev)
 
 	dev_vdbg(kbdev->dev, "Term Mali devfreq\n");
 
-#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && \
+	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 	if (kbdev->devfreq_cooling)
 		devfreq_cooling_unregister(kbdev->devfreq_cooling);
 

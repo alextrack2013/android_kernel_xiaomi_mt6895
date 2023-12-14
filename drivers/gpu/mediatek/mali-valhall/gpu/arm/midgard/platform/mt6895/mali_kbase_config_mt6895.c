@@ -25,7 +25,9 @@
 #endif
 
 DEFINE_MUTEX(g_mfg_lock);
+#if IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY)
 static int g_cur_opp_idx;
+#endif
 
 enum gpu_dvfs_status_step {
 	GPU_DVFS_STATUS_STEP_1 = 0x1,
@@ -103,8 +105,10 @@ static int pm_callback_power_on_nolock(struct kbase_device *kbdev)
 
 	gpu_dvfs_status_footprint(GPU_DVFS_STATUS_STEP_3);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY)
 	/* resume frequency */
 	mtk_common_gpufreq_commit(g_cur_opp_idx);
+#endif
 
 	gpu_dvfs_status_footprint(GPU_DVFS_STATUS_STEP_4);
 
@@ -145,8 +149,10 @@ static void pm_callback_power_off_nolock(struct kbase_device *kbdev)
 
 	gpu_dvfs_status_footprint(GPU_DVFS_STATUS_STEP_8);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY)
 	/* suspend frequency */
 	g_cur_opp_idx = mtk_common_ged_dvfs_get_last_commit_idx();
+#endif
 
 	gpu_dvfs_status_footprint(GPU_DVFS_STATUS_STEP_9);
 
