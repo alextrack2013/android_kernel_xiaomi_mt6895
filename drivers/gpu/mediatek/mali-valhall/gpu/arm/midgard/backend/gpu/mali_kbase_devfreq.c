@@ -32,7 +32,7 @@
 
 #include <linux/version.h>
 #include <linux/pm_opp.h>
-#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 #include <platform/mtk_platform_common/mtk_gpu_devfreq_governor.h>
 #endif
 #if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
@@ -644,7 +644,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 {
 	struct devfreq_dev_profile *dp;
 	int err;
-#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 	unsigned int i;
 
 	if (kbdev->nr_clocks == 0) {
@@ -686,12 +686,12 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 		return err;
 	}
 
-#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 	mtk_common_devfreq_update_profile(dp);
 #endif
 
 	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp,
-#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 				MTK_GPU_DEVFREQ_GOV_DUMMY, NULL);
 #else
 				"simple_ondemand", NULL);

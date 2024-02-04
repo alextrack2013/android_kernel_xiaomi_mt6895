@@ -21,7 +21,7 @@
 #include <linux/delay.h>
 #endif
 #endif
-#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 #include "mtk_gpu_devfreq_governor.h"
 #endif
 #if IS_ENABLED(CONFIG_MALI_MTK_DEBUG)
@@ -271,7 +271,7 @@ int mtk_common_device_init(struct kbase_device *kbdev)
 	mtk_gpu_fence_debug_dump_fp = mtk_common_gpu_fence_debug_dump;
 	mtk_common_debug_init();
 #endif
-#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 	mtk_common_devfreq_init();
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_SWPM_SUPPORT)
@@ -311,7 +311,7 @@ void mtk_common_device_term(struct kbase_device *kbdev)
 	mtk_gpu_fence_debug_dump_fp = NULL;
 	mtk_common_debug_term();
 #endif
-#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ)
+#if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 	mtk_common_devfreq_term();
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_SWPM_SUPPORT)
