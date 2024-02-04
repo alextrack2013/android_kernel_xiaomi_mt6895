@@ -42,6 +42,8 @@
 #include <platform/mtk_platform_common/mtk_gpu_devfreq_thermal.h>
 #endif
 
+static struct devfreq_simple_ondemand_data ondemand_data;
+
 /**
  * get_voltage() - Get the voltage value corresponding to the nominal frequency
  *                 used by devfreq.
@@ -645,6 +647,7 @@ static void kbase_devfreq_work_term(struct kbase_device *kbdev)
 
 int kbase_devfreq_init(struct kbase_device *kbdev)
 {
+	struct device_node *np = kbdev->dev->of_node;
 	struct devfreq_dev_profile *dp;
 	int err;
 #if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR) && \
@@ -698,11 +701,16 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	mtk_devfreq_update_voltage();
 #endif
 
+	of_property_read_u32(np, "upthreshold",
+			     &ondemand_data.upthreshold);
+	of_property_read_u32(np, "downdifferential",
+			     &ondemand_data.downdifferential);
+
 	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp,
 #if IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
 				MTK_GPU_DEVFREQ_GOV_DUMMY, NULL);
 #else
-				"simple_ondemand", NULL);
+				"simple_ondemand", &ondemand_data);
 #endif
 	if (IS_ERR(kbdev->devfreq)) {
 		err = PTR_ERR(kbdev->devfreq);
