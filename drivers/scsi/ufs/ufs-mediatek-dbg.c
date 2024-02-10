@@ -223,9 +223,9 @@ static void probe_android_vh_ufs_send_tm_command(void *data, struct ufs_hba *hba
 	enum cmd_hist_event event;
 	struct utp_task_req_desc *d = &hba->utmrdl_base_addr[tag];
 
-	lun = (be32_to_cpu(d->req_header.dword_0) >> 8) & 0xFF;
-	task_tag = be32_to_cpu(d->req_header.dword_0) & 0xFF;
-	tm_func = (be32_to_cpu(d->req_header.dword_1) >> 16) & 0xFFFF;
+	lun = (be32_to_cpu(d->upiu_req.req_header.dword_0) >> 8) & 0xFF;
+	task_tag = be32_to_cpu(d->upiu_req.req_header.dword_0) & 0xFF;
+	tm_func = (be32_to_cpu(d->upiu_req.req_header.dword_1) >> 16) & 0xFFFF;
 
 	if (!strcmp(str, "tm_send"))
 		event = CMD_TM_SEND;

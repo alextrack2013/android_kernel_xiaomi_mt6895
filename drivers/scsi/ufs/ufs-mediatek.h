@@ -218,6 +218,7 @@ struct ufs_mtk_host {
 	struct ufs_vreg *vcc;
 
 	struct semaphore rpmb_sem;
+	struct scsi_device *sdev_rpmb;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
 #endif
@@ -286,6 +287,17 @@ struct tag_bootmode {
 	u32 bootmode;
 	u32 boottype;
 };
+
+/**
+ * mtk_ufs_upiu_wlun_to_scsi_wlun - maps UPIU W-LUN id to SCSI W-LUN ID
+ * @upiu_wlun_id: UPIU W-LUN id
+ *
+ * Returns SCSI W-LUN id
+ */
+static inline u16 mtk_ufs_upiu_wlun_to_scsi_wlun(u8 upiu_wlun_id)
+{
+	return (upiu_wlun_id & ~UFS_UPIU_WLUN_ID) | SCSI_W_LUN_BASE;
+}
 
 #if IS_ENABLED(CONFIG_RPMB)
 struct rpmb_dev *ufs_mtk_rpmb_get_raw_dev(void);

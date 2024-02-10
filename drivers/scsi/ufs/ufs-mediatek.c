@@ -1096,7 +1096,7 @@ static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 	host = ufshcd_get_variant(hba);
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
-	sdev = hba->sdev_rpmb;
+	sdev = host->sdev_rpmb;
 	if (sdev) {
 		ret = scsi_device_get(sdev);
 		if (!ret && !scsi_device_online(sdev)) {
@@ -1158,24 +1158,26 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	u8 *desc_buf;
 	struct rpmb_dev *rdev;
 	u8 rw_size;
-	int retry = 10;
 	struct ufs_mtk_host *host;
+	struct scsi_device *sdev;
 	struct ufs_hba *hba = (struct ufs_hba *)data;
 
 	host = ufshcd_get_variant(hba);
 
-	/* wait ufshcd_scsi_add_wlus add sdev_rpmb  */
-	while (hba->sdev_rpmb == NULL) {
-		if (retry) {
-			retry--;
-			msleep(1000);
-		} else {
-			dev_err(hba->dev,
-				"scsi rpmb device cannot found\n");
-			goto out;
+	/* add sdev_rpmb */
+	shost_for_each_device(sdev, hba->host) {
+		if (sdev->lun == mtk_ufs_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN)) { /* rpmb lun */
+			host->sdev_rpmb = sdev;
+			/* break out shost_for_each_device should call scsi_device_put(sdev) */
+			scsi_device_put(sdev);
+			goto find_exit;
 		}
 	}
 
+	dev_info(hba->dev, "%s: scsi rpmb device cannot found\n", __func__);
+		goto out;
+
+find_exit:
 	desc_buf = kmalloc(QUERY_DESC_MAX_SIZE, GFP_KERNEL);
 	if (!desc_buf)
 		goto out;
@@ -1196,7 +1198,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 
 	ufs_mtk_rpmb_dev_ops.reliable_wr_cnt = rw_size;
 
-	if (unlikely(scsi_device_get(hba->sdev_rpmb)))
+	if (unlikely(scsi_device_get(host->sdev_rpmb)))
 		goto out;
 
 	rdev = rpmb_dev_register(hba->dev, &ufs_mtk_rpmb_dev_ops);
@@ -1218,7 +1220,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	sema_init(&host->rpmb_sem, 1);
 
 out_put_dev:
-	scsi_device_put(hba->sdev_rpmb);
+	scsi_device_put(host->sdev_rpmb);
 
 out:
 	return;
@@ -1629,6 +1631,19 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	err = ufs_mtk_get_vreg(dev, host->vcc);
 	if (err)
 		goto out_variant_clear;
+
+	/* enable vreg */
+	if (host->vcc) {
+		hba->vreg_info.vcc = host->vcc;
+		err = regulator_enable(host->vcc->reg);
+
+		if (!err)
+			host->vcc->enabled = true;
+		else
+			dev_info(dev, "%s: %s enable failed, err=%d\n",
+						__func__, host->vcc->name, err);
+	}
+
 skip_vcc:
 
 	cpu_latency_qos_add_request(&host->pm_qos_req,
@@ -1924,11 +1939,22 @@ static void ufs_mtk_vreg_set_lpm(struct ufs_hba *hba, bool lpm)
 				   REGULATOR_MODE_NORMAL);
 }
 
-static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
+
+static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
+	enum ufs_notify_change_status status)
 {
 	int err;
 	u64 ufs_version;
 	struct arm_smccc_res res;
+
+	if (status == PRE_CHANGE) {
+		if (!ufshcd_is_auto_hibern8_supported(hba))
+			return 0;
+		err = ufs_mtk_auto_hibern8_disable(hba);
+
+		return err;
+	}
 
 	if (ufshcd_is_link_hibern8(hba)) {
 		err = ufs_mtk_link_set_lpm(hba);
@@ -2009,25 +2035,6 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4, "Debug Probe ");
 	ufs_mtk_dbg_dump(100);
 #endif
-}
-
-static int ufs_mtk_setup_regulators(struct ufs_hba *hba, bool on)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	struct ufs_vreg_info *vreg_info = &hba->vreg_info;
-	int ret = 0;
-
-	if (host->vcc) {
-		vreg_info->vcc = host->vcc;
-		if (on)
-			ret = regulator_enable(host->vcc->reg);
-		else
-			ret = regulator_disable(host->vcc->reg);
-		if (!ret)
-			host->vcc->enabled = on;
-	}
-
-	return ret;
 }
 
 static void ufs_mtk_fix_regulators(struct ufs_hba *hba)
@@ -2173,14 +2180,6 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 
 	trace_ufs_mtk_event(evt, val);
 
-	/*
-	 * After error handling of ufshcd_host_reset_and_restore
-	 * Bypass clear ua to send scsi command request sense, else
-	 * deadlock hang because scsi is waiting error handling done.
-	 */
-	if (evt == UFS_EVT_HOST_RESET)
-		hba->wlun_dev_clr_ua = false;
-
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	if (evt == UFS_EVT_ABORT && !ufs_abort_aee_count) {
 		cmd_hist_disable();
@@ -2192,7 +2191,7 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 #endif
 }
 
-static void ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
+static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
 {
 	unsigned long flags;
 	int ret;
@@ -2208,6 +2207,8 @@ static void ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
 	ret = ufs_mtk_wait_link_state(hba, VS_LINK_UP, 100);
 	if (ret)
 		dev_warn(hba->dev, "exit h8 state fail, ret=%d\n", ret);
+
+	return ret;
 }
 
 static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
@@ -2245,7 +2246,6 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.init                = ufs_mtk_init,
 	.get_ufs_hci_version = ufs_mtk_get_ufs_hci_version,
 	.setup_clocks        = ufs_mtk_setup_clocks,
-	.setup_regulators    = ufs_mtk_setup_regulators,
 	.hce_enable_notify   = ufs_mtk_hce_enable_notify,
 	.link_startup_notify = ufs_mtk_link_startup_notify,
 	.pwr_change_notify   = ufs_mtk_pwr_change_notify,
@@ -2350,71 +2350,50 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 	return 0;
 }
 
-int ufs_mtk_pltfrm_suspend(struct device *dev)
+int ufs_mtk_system_suspend(struct device *dev)
 {
-	int ret;
+	int ret = 0;
+#if defined(CONFIG_UFSFEATURE)
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_mtk_host *host;
-#if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-#endif
 
-	host = ufshcd_get_variant(hba);
-	if (down_trylock(&host->rpmb_sem))
-		return -EBUSY;
-
-#if defined(CONFIG_UFSFEATURE)
 	if (ufsf->hba)
 		ufsf_suspend(ufsf);
 #endif
 
-	/* Check if shutting down */
-	if (!ufshcd_is_user_access_allowed(hba)) {
-		ret = -EBUSY;
-		goto out;
-	}
-
-	ret = ufshcd_pltfrm_suspend(dev);
-out:
+	ret = ufshcd_system_suspend(dev);
 
 #if defined(CONFIG_UFSFEATURE)
 	/* We assume link is off */
 	if (ret && ufsf)
 		ufsf_resume(ufsf, true);
 #endif
-	if (ret)
-		up(&host->rpmb_sem);
 
 	return ret;
 }
 
-int ufs_mtk_pltfrm_resume(struct device *dev)
+int ufs_mtk_system_resume(struct device *dev)
 {
-	int ret;
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_mtk_host *host;
+	int ret = 0;
 #if defined(CONFIG_UFSFEATURE)
+	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 	bool is_link_off = ufshcd_is_link_off(hba);
 #endif
 
-	ret = ufshcd_pltfrm_resume(dev);
+	ret = ufshcd_system_resume(dev);
 
 #if defined(CONFIG_UFSFEATURE)
 	if (!ret && ufsf->hba)
 		ufsf_resume(ufsf, is_link_off);
 #endif
 
-	host = ufshcd_get_variant(hba);
-	if (!ret)
-		up(&host->rpmb_sem);
-
 	return ret;
 }
 
-int ufs_mtk_pltfrm_runtime_suspend(struct device *dev)
+int ufs_mtk_runtime_suspend(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
@@ -2423,7 +2402,7 @@ int ufs_mtk_pltfrm_runtime_suspend(struct device *dev)
 		ufsf_suspend(ufsf);
 #endif
 
-	ret = ufshcd_pltfrm_runtime_suspend(dev);
+	ret = ufshcd_runtime_suspend(dev);
 
 #if defined(CONFIG_UFSFEATURE)
 	/* We assume link is off */
@@ -2434,16 +2413,16 @@ int ufs_mtk_pltfrm_runtime_suspend(struct device *dev)
 	return ret;
 }
 
-int ufs_mtk_pltfrm_runtime_resume(struct device *dev)
+int ufs_mtk_runtime_resume(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 #if defined(CONFIG_UFSFEATURE)
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
 	bool is_link_off = ufshcd_is_link_off(hba);
 #endif
 
-	ret = ufshcd_pltfrm_runtime_resume(dev);
+	ret = ufshcd_runtime_resume(dev);
 
 #if defined(CONFIG_UFSFEATURE)
 	if (!ret && ufsf->hba)
@@ -2487,11 +2466,10 @@ void ufs_mtk_shutdown(struct platform_device *pdev)
 }
 
 static const struct dev_pm_ops ufs_mtk_pm_ops = {
-	.suspend         = ufs_mtk_pltfrm_suspend,
-	.resume          = ufs_mtk_pltfrm_resume,
-	.runtime_suspend = ufs_mtk_pltfrm_runtime_suspend,
-	.runtime_resume  = ufs_mtk_pltfrm_runtime_resume,
-	.runtime_idle    = ufshcd_pltfrm_runtime_idle,
+	SET_SYSTEM_SLEEP_PM_OPS(ufs_mtk_system_suspend, ufs_mtk_system_resume)
+	SET_RUNTIME_PM_OPS(ufs_mtk_runtime_suspend, ufs_mtk_runtime_resume, NULL)
+	.prepare	 = ufshcd_suspend_prepare,
+	.complete	 = ufshcd_resume_complete,
 };
 
 static struct platform_driver ufs_mtk_pltform = {
