@@ -4340,8 +4340,7 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 	spin_unlock(&iova_list.lock);
 }
 
-static void mtk_iova_dbg_alloc(struct device *dev, struct iova_domain *iovad,
-			       dma_addr_t iova, size_t size)
+static void mtk_iova_dbg_alloc(struct device *dev, dma_addr_t iova, size_t size)
 {
 	struct iova_info *iova_buf;
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
@@ -4364,7 +4363,6 @@ static void mtk_iova_dbg_alloc(struct device *dev, struct iova_domain *iovad,
 	iova_buf->tab_id = tab_id;
 	iova_buf->dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
 	iova_buf->dev = dev;
-	iova_buf->iovad = iovad;
 	iova_buf->iova = iova;
 	iova_buf->size = size;
 	spin_lock(&iova_list.lock);
@@ -4374,7 +4372,7 @@ static void mtk_iova_dbg_alloc(struct device *dev, struct iova_domain *iovad,
 	mtk_iommu_iova_trace(IOMMU_ALLOC, iova, size, tab_id, dev);
 }
 
-static void mtk_iova_dbg_free(struct iova_domain *iovad, dma_addr_t iova, size_t size)
+static void mtk_iova_dbg_free(dma_addr_t iova, size_t size)
 {
 	struct iova_info *plist;
 	struct iova_info *tmp_plist;
@@ -4384,7 +4382,7 @@ static void mtk_iova_dbg_free(struct iova_domain *iovad, dma_addr_t iova, size_t
 	spin_lock(&iova_list.lock);
 	list_for_each_entry_safe(plist, tmp_plist,
 				 &iova_list.head, list_node) {
-		if (plist->iova == iova && plist->size == size && plist->iovad == iovad) {
+		if (plist->iova == iova && plist->size == size) {
 			tab_id = plist->tab_id;
 			dev = plist->dev;
 			list_del(&plist->list_node);
@@ -4401,17 +4399,16 @@ static void mtk_iova_dbg_free(struct iova_domain *iovad, dma_addr_t iova, size_t
 }
 
 /* all code inside alloc_iova_hook can't be scheduled! */
-static void alloc_iova_hook(void *data, struct device *dev, struct iova_domain *iovad,
+static void alloc_iova_hook(void *data, struct device *dev,
 			    dma_addr_t iova, size_t size)
 {
-	return mtk_iova_dbg_alloc(dev, iovad, iova, size);
+	return mtk_iova_dbg_alloc(dev, iova, size);
 }
 
 /* all code inside free_iova_hook can't be scheduled! */
-static void free_iova_hook(void *data, struct iova_domain *iovad,
-			   dma_addr_t iova, size_t size)
+static void free_iova_hook(void *data, dma_addr_t iova, size_t size)
 {
-	return mtk_iova_dbg_free(iovad, iova, size);
+	return mtk_iova_dbg_free(iova, size);
 }
 
 static int mtk_m4u_dbg_probe(struct platform_device *pdev)
@@ -4437,10 +4434,10 @@ static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 
 	m4u_debug_init(m4u_data);
 
-	ret = register_trace_android_vh_iommu_iovad_alloc_iova(alloc_iova_hook,
+	ret = register_trace_android_vh_iommu_alloc_iova(alloc_iova_hook,
 							       "mtk_m4u_dbg_probe");
 	pr_debug("add alloc iova hook %s\n", ret ? "fail": "pass");
-	ret = register_trace_android_vh_iommu_iovad_free_iova(free_iova_hook,
+	ret = register_trace_android_vh_iommu_free_iova(free_iova_hook,
 							      "mtk_m4u_dbg_probe");
 	pr_debug("add free iova hook %s\n", ret ? "fail": "pass");
 
