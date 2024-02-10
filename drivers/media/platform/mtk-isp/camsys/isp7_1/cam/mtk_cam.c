@@ -8690,10 +8690,10 @@ static void mtk_cam_trace_init(void)
 {
 	int ret = 0;
 
-	ret = register_trace_android_rvh_media_device_setup_link(
+	ret = register_trace_android_vh_media_device_setup_link(
 			media_device_setup_link_hook, NULL);
 	if (ret)
-		pr_info("register android_rvh_media_device_setup_link failed!\n");
+		pr_info("register android_vh_media_device_setup_link failed!\n");
 	ret = register_trace_android_vh_clear_reserved_fmt_fields(
 			clear_reserved_fmt_fields_hook, NULL);
 	if (ret)
@@ -8706,18 +8706,18 @@ static void mtk_cam_trace_init(void)
 			clear_mask_adjust_hook, NULL);
 	if (ret)
 		pr_info("register android_vh_clear_mask_adjust failed!\n");
-	ret = register_trace_android_rvh_v4l2subdev_set_fmt(
+	ret = register_trace_android_vh_v4l2subdev_set_fmt(
 			v4l2subdev_set_fmt_hook, NULL);
 	if (ret)
-		pr_info("register android_rvh_v4l2subdev_set_fmt failed!\n");
-	ret = register_trace_android_rvh_v4l2subdev_set_selection(
+		pr_info("register android_vh_v4l2subdev_set_fmt failed!\n");
+	ret = register_trace_android_vh_v4l2subdev_set_selection(
 			v4l2subdev_set_selection_hook, NULL);
 	if (ret)
-		pr_info("register android_rvh_v4l2subdev_set_selection failed!\n");
-	ret = register_trace_android_rvh_v4l2subdev_set_frame_interval(
+		pr_info("register android_vh_v4l2subdev_set_selection failed!\n");
+	ret = register_trace_android_vh_v4l2subdev_set_frame_interval(
 			v4l2subdev_set_frame_interval_hook, NULL);
 	if (ret)
-		pr_info("register android_rvh_v4l2subdev_set_frame_interval failed!\n");
+		pr_info("register android_vh_v4l2subdev_set_frame_interval failed!\n");
 }
 
 static void mtk_cam_trace_exit(void)
