@@ -754,8 +754,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 	}
 #endif
 
-#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && \
-	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
 	kbdev->devfreq_cooling = of_devfreq_cooling_register_power(
 			kbdev->dev->of_node,
 			kbdev->devfreq,
@@ -775,11 +774,12 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
 
 	return 0;
 
-#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL) && \
-	IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_GOVERNOR)
+#if IS_ENABLED(CONFIG_DEVFREQ_THERMAL)
 cooling_reg_failed:
+#if !IS_ENABLED(CONFIG_MALI_MTK_DEVFREQ_THERMAL)
 	kbase_ipa_term(kbdev);
 ipa_init_failed:
+#endif
 	devfreq_unregister_opp_notifier(kbdev->dev, kbdev->devfreq);
 #endif /* CONFIG_DEVFREQ_THERMAL */
 
