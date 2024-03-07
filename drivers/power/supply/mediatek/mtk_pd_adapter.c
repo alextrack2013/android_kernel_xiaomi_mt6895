@@ -51,7 +51,7 @@
 #include "adapter_class.h"
 #include "mtk_charger.h"
 
-#include "../../misc/hwid/hwid.h"
+#include "../../../misc/hwid/hwid.h"
 
 #define PHY_MODE_DPDMPULLDOWN_SET 3
 #define PHY_MODE_DPDMPULLDOWN_CLR 4

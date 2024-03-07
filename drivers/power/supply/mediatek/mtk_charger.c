@@ -68,9 +68,9 @@
 #include "bq28z610.h"
 #include "pmic_voter.h"
 
-#include "../../misc/mediatek/typec/tcpc/inc/tcpci.h"
+#include "../../../misc/mediatek/typec/tcpc/inc/tcpci.h"
 #if defined(CONFIG_TARGET_PRODUCT_XAGA)
-#include "../../misc/hwid/hwid.h"
+#include "../../../misc/hwid/hwid.h"
 #endif
 
 static struct platform_driver mtk_charger_driver;

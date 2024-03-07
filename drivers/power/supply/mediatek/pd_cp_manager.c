@@ -27,7 +27,7 @@
 #include "pd_cp_manager.h"
 #include "sc8561_reg.h"
 #include "bq28z610.h"
-#include "../../misc/hwid/hwid.h"
+#include "../../../misc/hwid/hwid.h"
 
 static struct platform_driver pdm_driver;
 enum pdm_sm_state {

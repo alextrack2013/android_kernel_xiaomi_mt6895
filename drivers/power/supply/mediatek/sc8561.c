@@ -26,7 +26,7 @@
 #include "mtk_charger.h"
 #include "sc8561_reg.h"
 #include "ln8410_reg.h"
-#include "../../misc/hwid/hwid.h"
+#include "../../../misc/hwid/hwid.h"
 
 static int log_level = 2;
 

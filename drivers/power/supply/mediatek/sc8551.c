@@ -34,7 +34,7 @@
 #include "mtk_charger.h"
 #include "sc8561_reg.h"
 #include "sc8551.h"
-#include "../../misc/hwid/hwid.h"
+#include "../../../misc/hwid/hwid.h"
 
 enum sc8551_driver_data {
 	SC8551_STANDALONE,
