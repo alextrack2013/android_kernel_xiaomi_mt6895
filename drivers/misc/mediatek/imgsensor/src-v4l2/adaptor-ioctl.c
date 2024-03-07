@@ -181,9 +181,13 @@ static void frame_desc_to_vcinfo2(
 		vc->VC_DataType = entry->data_type;
 		vc->VC_SIZEH_PIXEL = entry->hsize;
 		vc->VC_SIZEV = entry->vsize;
+#ifndef XAGA_CAM
 		vc->DT_REMAP_TO_TYPE = entry->dt_remap_to_type;
 		if (vc->VC_DataType == 0x2b ||
 			vc->DT_REMAP_TO_TYPE == MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10)
+#else /* XAGA_CAM */
+		if (vc->VC_DataType == 0x2b)
+#endif /* XAGA_CAM */
 			vc->VC_SIZEH_BYTE = vc->VC_SIZEH_PIXEL * 10 / 8;
 		else
 			vc->VC_SIZEH_BYTE = vc->VC_SIZEH_PIXEL;
@@ -369,12 +373,19 @@ static void vcinfo2_fill_output_format(
 			vcinfo2->vc_info[i].VC_OUTPUT_FORMAT = fmt;
 		} else {
 			/* stat data */
+#ifdef XAGA_CAM
+			vcinfo2->vc_info[i].VC_OUTPUT_FORMAT =
+			  (vcinfo2->vc_info[i].VC_DataType == 0x2b) ?
+			  SENSOR_OUTPUT_FORMAT_RAW_B :
+			  SENSOR_OUTPUT_FORMAT_RAW8_B;
+#else /* XAGA_CAM */
 			vcinfo2->vc_info[i].VC_OUTPUT_FORMAT =
 				((vcinfo2->vc_info[i].VC_DataType == 0x2b) ||
 				 (vcinfo2->vc_info[i].DT_REMAP_TO_TYPE ==
 					MTK_MBUS_FRAME_DESC_REMAP_TO_RAW10)) ?
 				SENSOR_OUTPUT_FORMAT_RAW_B :
 				SENSOR_OUTPUT_FORMAT_RAW8_B;
+#endif /* XAGA_CAM */
 		}
 	}
 }
