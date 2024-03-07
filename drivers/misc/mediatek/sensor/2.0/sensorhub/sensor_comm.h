@@ -46,6 +46,7 @@ struct sensor_comm_batch {
 struct sensor_comm_timesync {
 	int64_t host_timestamp;
 	int64_t host_archcounter;
+#if !IS_ENABLED(CONFIG_TARGET_PRODUCT_XAGA)
 	int64_t sched_clock;
 	int32_t usecond;
 	int32_t second;
@@ -53,6 +54,7 @@ struct sensor_comm_timesync {
 	int32_t hour;
 	int32_t day;
 	int32_t month;
+#endif
 } __packed __aligned(4);
 
 struct sensor_comm_share_mem {

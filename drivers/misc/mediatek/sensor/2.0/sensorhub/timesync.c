@@ -13,9 +13,12 @@
 #include <linux/workqueue.h>
 #include <linux/atomic.h>
 #include <linux/spinlock.h>
+
+#if !IS_ENABLED(CONFIG_TARGET_PRODUCT_XAGA)
 #include <linux/time.h>
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
+#endif
 
 #include "timesync.h"
 #include "sensor_comm.h"
@@ -78,9 +81,12 @@ static int timesync_comm_with_nolock(void)
 	unsigned long flags;
 	struct sensor_comm_ctrl *ctrl = NULL;
 	struct sensor_comm_timesync *time = NULL;
-	int64_t now_time = 0, arch_counter = 0, schedclock = 0;
+	int64_t now_time = 0, arch_counter = 0;
+#if !IS_ENABLED(CONFIG_TARGET_PRODUCT_XAGA)
+	int64_t schedclock = 0;
 	struct timespec64 real_time = { 0 };
 	struct rtc_time android_time;
+#endif
 
 	if (READ_ONCE(timesync_suspend_flag))
 		return 0;
@@ -96,12 +102,18 @@ static int timesync_comm_with_nolock(void)
 	local_irq_save(flags);
 	now_time = ktime_get_boottime_ns();
 	arch_counter = __arch_counter_get_cntvct();
+
+#if !IS_ENABLED(CONFIG_TARGET_PRODUCT_XAGA)
 	schedclock = sched_clock();
 	ktime_get_real_ts64(&real_time);
+#endif
+
 	local_irq_restore(flags);
 
 	time->host_timestamp = now_time;
 	time->host_archcounter = arch_counter;
+
+#if !IS_ENABLED(CONFIG_TARGET_PRODUCT_XAGA)
 	time->sched_clock = schedclock;
 	real_time.tv_sec -= (uint64_t)sys_tz.tz_minuteswest * 60;
 	rtc_time64_to_tm(real_time.tv_sec, &android_time);
@@ -114,6 +126,8 @@ static int timesync_comm_with_nolock(void)
 	pr_info("boot %lld sched %lld android %02d-%02d %02d:%02d:%02d.%06d\n",
 		now_time, schedclock, time->month, time->day, time->hour,
 		time->minute, time->second, time->usecond);
+#endif
+
 	ret = sensor_comm_ctrl_send(ctrl, sizeof(*ctrl) + ctrl->length);
 	kfree(ctrl);
 
