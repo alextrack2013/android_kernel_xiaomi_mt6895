@@ -4,8 +4,13 @@
 MKFILE_PATH := $(lastword $(MAKEFILE_LIST))
 IMGSENSOR_DRIVER_PATH := $(patsubst %/,%,$(dir $(realpath $(MKFILE_PATH))))
 MTK_DRIVER_PATH := $(srctree)/drivers/misc/mediatek
+ifeq ($(CONFIG_BUILD_PRODUCT_NAME),"xaga")
+MTK_ISP_DRIVER_PATH := $(srctree)/drivers/media/platform/mtk-isp-xaga
+MTK_CAMSYS_DRIVER_PATH := $(srctree)/drivers/media/platform/mtk-isp-xaga/camsys/isp7_1/cam
+else
 MTK_ISP_DRIVER_PATH := $(srctree)/drivers/media/platform/mtk-isp
 MTK_CAMSYS_DRIVER_PATH := $(srctree)/drivers/media/platform/mtk-isp/camsys/isp7_1/cam
+endif
 IMGSENSOR_PROJECT := $(subst ",,$(CONFIG_MTK_IMGSENSOR_PROJECT))
 
 FRAME_SYNC := frame-sync

@@ -85,7 +85,11 @@ obj-$(CONFIG_VIDEO_QCOM_VENUS)		+= qcom/venus/
 
 obj-y					+= sunxi/
 
+ifeq ($(CONFIG_BUILD_PRODUCT_NAME),"xaga")
+obj-y					+= mtk-isp-xaga/
+else
 obj-y					+= mtk-isp/
+endif
 
 obj-$(CONFIG_MTK_CAMERA_FD_ISP7)	+= mtk-aie/
 
