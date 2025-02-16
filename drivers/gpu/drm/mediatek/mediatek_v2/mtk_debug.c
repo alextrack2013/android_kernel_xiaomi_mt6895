@@ -335,7 +335,9 @@ static void init_log_buffer(void)
 	pa = __pa_nodebug(va);
 	size = (DEBUG_BUFFER_SIZE - 4096);
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 	mrdump_mini_add_extra_file(va, pa, size, "DISPLAY");
+#endif
 
 	DDPINFO("[DISP]%s success\n", __func__);
 	return;

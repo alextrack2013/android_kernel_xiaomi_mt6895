@@ -8722,9 +8722,11 @@ static void mtk_cam_trace_init(void)
 
 static void mtk_cam_trace_exit(void)
 {
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 	unregister_trace_android_vh_clear_reserved_fmt_fields(clear_reserved_fmt_fields_hook, NULL);
 	unregister_trace_android_vh_fill_ext_fmtdesc(fill_ext_fmtdesc_hook, NULL);
 	unregister_trace_android_vh_clear_mask_adjust(clear_mask_adjust_hook, NULL);
+#endif
 }
 
 static int __init mtk_cam_init(void)
