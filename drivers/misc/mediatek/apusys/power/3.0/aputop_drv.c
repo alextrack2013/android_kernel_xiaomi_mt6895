@@ -22,7 +22,6 @@
 const struct apupwr_plat_data *pwr_data;
 
 struct platform_device *this_pdev;
-static struct apupwr_dbg aputop_dbg;
 static int aputop_func_sel;
 static DEFINE_MUTEX(aputop_func_mtx);
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -335,24 +334,6 @@ static const struct file_operations aputop_dbg_fops = {
 	.release = single_release,
 	.write = aputop_dbg_write,
 };
-
-int aputop_dbg_init(struct apusys_core_info *info)
-{
-        /* creating power file */
-	aputop_dbg.file = debugfs_create_file("power", (0644),
-			info->dbg_root, NULL, &aputop_dbg_fops);
-	if (IS_ERR_OR_NULL(aputop_dbg.file)) {
-		pr_debug("failed to create \"power\" debug file.\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-void aputop_dbg_exit(void)
-{
-	debugfs_remove(aputop_dbg.file);
-}
 #endif
 
 int apu_top_3_init(void)

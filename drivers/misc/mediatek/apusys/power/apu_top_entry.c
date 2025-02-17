@@ -28,26 +28,13 @@ static void __exit apu_top_entry_exit(void)
 }
 
 // caller is middleware
-int apu_power_drv_init(struct apusys_core_info *info)
-{
-	pr_debug("%s ++\n", __func__);
-	if (g_apupw_drv_ver != 3)
-		return apupw_dbg_init(info);	// 2.5
-	else
-		return aputop_dbg_init(info);	// 3.0
-
+int apu_power_drv_init(struct apusys_core_info *info) {
 	return 0;
 }
 EXPORT_SYMBOL(apu_power_drv_init);
 
 // caller is middleware
-void apu_power_drv_exit(void)
-{
-	if (g_apupw_drv_ver != 3)
-		apupw_dbg_exit();	// 2.5
-	else
-		aputop_dbg_exit();	// 3.0
-}
+void apu_power_drv_exit(void) { }
 EXPORT_SYMBOL(apu_power_drv_exit);
 
 module_init(apu_top_entry_init);
