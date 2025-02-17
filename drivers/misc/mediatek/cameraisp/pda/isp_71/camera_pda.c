@@ -35,11 +35,6 @@
 #define PDA_MMQOS
 // --------------------------------
 
-#ifdef PDA_TF_DUMP_71_1
-#include "iommu_debug.h"
-#include <dt-bindings/memory/mt6983-larb-port.h>
-#endif
-
 #define PDA_DEV_NAME "camera-pda"
 
 #define LOG_INF(format, args...)                                               \
